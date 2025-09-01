@@ -117,9 +117,15 @@
   $('#themeBtn').onclick=()=>{ const cur=localStorage.getItem(THEME_KEY)||'dark'; applyTheme(THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]); };
 
   // ==== FIREBASE CONFIG (ISI MILIKMU DI SINI) ====
-  const FIREBASE_CONFIG = {
-    apiKey: "", authDomain: "", projectId: "", storageBucket: ""
-  };
+ const firebaseConfig = {
+  apiKey: "AIzaSyC9T834JzGJ7ldcxEEU1InKAaSxGenJruk",
+  authDomain: "keluh-kesah-20b6a.firebaseapp.com",
+  projectId: "keluh-kesah-20b6a",
+  storageBucket: "keluh-kesah-20b6a.firebasestorage.app",
+  messagingSenderId: "34639105511",
+  appId: "1:34639105511:web:094b7717c1477e2210c142",
+  measurementId: "G-LKVDQW2EY6"
+};
   let online=false, db=null, postsRef=null;
   try{
     if(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId){
