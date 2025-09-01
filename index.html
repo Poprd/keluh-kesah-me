@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Keluh Kesah — Voice Note + Realtime + Batal (Fix)</title>
+  <style>
+    :root{
+      --bg1:#0a0f1d; --bg2:#0c1222;
+      --panel:#121826; --card:#1a2235; --muted:#9aa4b2; --fg:#e7eaf0;
+      --primary:#8fb7ff; --accent:#7dd3fc; --ok:#22c55e; --danger:#ef4444; --ring:#26364f;
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+    }
+    [data-theme="light"]{ --bg1:#eff3f9; --bg2:#dee7f5; --panel:#ffffff; --card:#f8fafc; --muted:#5b6470; --fg:#0b1220; --primary:#2f6fed; --accent:#06b6d4; --ok:#16a34a; --danger:#dc2626; --ring:#d9e1ee; --shadow:0 10px 24px rgba(0,0,0,.08); }
+    [data-theme="retro"]{ --bg1:#120916; --bg2:#1b0c1a; --panel:#1e1322; --card:#251829; --muted:#dbb3ff; --fg:#fff3ff; --primary:#ff9ecd; --accent:#f7f06d; --ok:#9aff8b; --danger:#ff6f61; --ring:#4a2a5e; --shadow:0 0 22px rgba(255,158,205,.25); }
+    [data-theme="retro"] body{ font-family: ui-monospace, Menlo, Consolas, monospace; }
+    [data-theme="retro"] .btn{ box-shadow:0 0 0 2px #ff9ecd55; }
+    [data-theme="retro"] .btn.primary{ background:linear-gradient(180deg,#ff9ecd,#f472b6); border-color:#ff9ecd; color:#2d0f22 }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--fg)}
+    .wrap{max-width:1100px;margin:0 auto;padding:22px}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0));backdrop-filter: blur(6px);}
+    .bar{display:flex;justify-content:space-between;align-items:center;padding:10px 22px;border-bottom:1px solid var(--ring)}
+    .title{font-weight:800;font-size:26px}
+    .actions{display:flex;gap:10px}
+    .btn{border:1px solid var(--ring);background:var(--panel);color:var(--fg);padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.primary{background:var(--primary);color:#0b1220;border:none}
+    .btn.icon{padding:10px}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    h1.hero{font-size:44px;text-align:center;margin:32px 0 6px}
+    p.sub{color:var(--muted);text-align:center;margin:0 0 18px}
+    .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+    .card .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-bottom:10px}
+    .who{color:var(--muted);font-weight:600}
+    .to{font-weight:800}
+    .content{font-size:18px;line-height:1.5;margin:12px 0 14px;white-space:pre-wrap}
+    .kbar{display:flex;gap:10px}
+    .kbtn{border:1px solid var(--ring);background:var(--panel);color:var(--fg);border-radius:10px;padding:8px 12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+    .kbtn .count{opacity:.9}
+    dialog{border:1px solid var(--ring);background:var(--panel);color:var(--fg);border-radius:16px;box-shadow:var(--shadow)}
+    .modal{max-width:min(720px,96vw)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    input[type=text], textarea{width:100%;background:#0e1422;color:var(--fg);border:1px solid var(--ring);border-radius:12px;padding:10px 12px}
+    [data-theme="light"] input[type=text], [data-theme="light"] textarea{background:#fff;color:#0b1220}
+    textarea{min-height:110px}
+    .muted{color:var(--muted)}
+    .sep{height:1px;background:var(--ring);margin:12px 0}
+    .chip{font-size:12px;border:1px solid var(--ring);border-radius:999px;padding:2px 8px;color:var(--muted)}
+    .empty{color:var(--muted);text-align:center;padding:18px}
+    .comment{background:var(--card);border:1px solid var(--ring);border-radius:12px;padding:10px}
+    .comment+.comment{margin-top:8px}
+    .audio{width:100%}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="title">Keluh Kesah</div>
+      <div class="actions">
+        <button id="aboutBtn" class="btn icon" title="Tentang">❔</button>
+        <button id="themeBtn" class="btn icon" title="Tema">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1 class="hero">Keluh Kesah</h1>
+    <p class="sub">Silakan berkeluh kesah di sini. Bisa teks ✍️ atau voice note 🎙️</p>
+    <div style="text-align:center;margin-bottom:16px">
+      <button id="addBtn" class="btn primary">➕ Tambah Keluhan</button>
+    </div>
+    <section id="cards" class="grid"></section>
+  </main>
+
+  <!-- Modal Tambah -->
+  <dialog id="formDlg" class="modal">
+    <form id="form" method="dialog">
+      <h3>Tambah Keluhan</h3>
+      <div class="row">
+        <input type="text" id="to" placeholder="Untuk" required style="flex:1 1 220px">
+        <input type="text" id="from" placeholder="Dari (opsional)" style="flex:1 1 220px">
+      </div>
+      <textarea id="text" placeholder="Keluhan..."></textarea>
+      <div class="row">
+        <button type="button" id="recBtn" class="kbtn">🎙️ Rekam</button>
+        <button type="button" id="stopRecBtn" class="kbtn" disabled>⏹️ Stop</button>
+        <span id="recState" class="chip">siap</span>
+      </div>
+      <audio id="recPlay" class="audio" controls style="display:none"></audio>
+      <div class="row" style="justify-content:flex-end;margin-top:8px">
+        <button type="button" class="btn" id="resetFormBtn">Batal</button>
+        <button type="button" class="btn" id="closeFormBtn">Tutup</button>
+        <button id="saveBtn" class="btn primary" type="button">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal Detail -->
+  <dialog id="detailDlg" class="modal">
+    <div id="detailBody"></div>
+    <div class="sep"></div>
+    <form id="commentForm" method="dialog">
+      <h4 style="margin:0 0 6px">Tinggalkan komentar</h4>
+      <div class="row">
+        <input id="cFrom" type="text" placeholder="Dari (opsional)" style="flex:1 1 220px" />
+        <button type="button" id="cRecBtn" class="kbtn">🎙️ VN</button>
+        <button type="button" id="cStopRecBtn" class="kbtn" disabled>⏹️ Stop</button>
+        <span id="cRecState" class="chip">siap</span>
+      </div>
+      <textarea id="cText" placeholder="Tambahkan komentar..."></textarea>
+      <audio id="cRecPlay" class="audio" controls style="display:none"></audio>
+      <div class="row" style="justify-content:flex-end;margin-top:8px">
+        <button value="cancel" class="btn" id="closeDetailBtn">Tutup</button>
+        <button id="sendComment" value="default" class="btn primary" type="button">Kirim</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal Tentang -->
+  <dialog id="aboutDlg" class="modal">
+    <h3>Keluh Kesah + Voice Note</h3>
+    <p class="muted">Data lokal disimpan di <b>localStorage</b>. Untuk berbagi real-time, isi konfigurasi <b>Firebase</b> di bawah ini.</p>
+    <form method="dialog" style="text-align:right"><button class="btn">Tutup</button></form>
+  </dialog>
+
+  <!-- Firebase (opsional) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+(()=>{
+  const $ = s=>document.querySelector(s);
+
+  // THEME
+  const THEME_KEY='kk:theme'; const THEMES=['dark','light','retro'];
+  function applyTheme(t){ const th=THEMES.includes(t)?t:'dark'; document.documentElement.setAttribute('data-theme',th); localStorage.setItem(THEME_KEY,th); $('#themeBtn').textContent= th==='light'?'🌞': th==='retro'?'🕹️':'🌙'; }
+  applyTheme(localStorage.getItem(THEME_KEY)||'dark');
+  $('#themeBtn').onclick=()=>{ const cur=localStorage.getItem(THEME_KEY)||'dark'; const next=THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]; applyTheme(next); };
+
+  // Firebase config (ISI untuk realtime; biarkan kosong untuk lokal-only)
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC9T834JzGJ7ldcxEEU1InKAaSxGenJruk",
+    authDomain: "keluh-kesah-20b6a.firebaseapp.com",
+    projectId: "keluh-kesah-20b6a",
+    storageBucket: "keluh-kesah-20b6a.appspot.com",
+    messagingSenderId: "34639105511",
+    appId: "1:34639105511:web:094b7717c1477e2210c142",
+    measurementId: "G-LKVDQW2EY6"
+  };
+
+  // === FIX 1: pakai FIREBASE_CONFIG yg sama utk cek & init ===
+  let online = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+  let db = null;
+  if(online){ try{ firebase.initializeApp(FIREBASE_CONFIG); db=firebase.firestore(); }catch(e){ console.warn('Firebase init gagal, fallback ke local.', e); online=false; } }
+
+  // STORAGE
+  const STORE='kk:posts:v4';
+  const saveLocal = (arr)=> localStorage.setItem(STORE, JSON.stringify(arr));
+  const loadLocal = ()=> { try{return JSON.parse(localStorage.getItem(STORE)||'[]')}catch{return []} };
+  let posts = online ? [] : loadLocal();
+
+  // UTIL
+  const fmtTime=ts=>new Date(ts).toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'});
+  const uid=()=>Math.random().toString(36).slice(2,9);
+  const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+  // Recorder helper
+  function createRecorder(statusEl, audioEl, startBtn, stopBtn){
+    let rec=null, stream=null, chunks=[], started=0, mime='audio/webm';
+    if(MediaRecorder && !MediaRecorder.isTypeSupported?.(mime)){
+      if(MediaRecorder.isTypeSupported('audio/mp4')) mime='audio/mp4';
+      else if(MediaRecorder.isTypeSupported('audio/ogg')) mime='audio/ogg';
+    }
+    async function start(){
+      stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      rec = new MediaRecorder(stream,{mimeType:mime}); chunks=[]; started=Date.now();
+      rec.ondataavailable = e=> e.data.size && chunks.push(e.data);
+      rec.onstop = ()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(chunks,{type:mime});
+        const fr = new FileReader();
+        fr.onloadend = ()=>{
+          audioEl.src = URL.createObjectURL(blob); audioEl.style.display='block';
+          statusEl.textContent = 'siap (rekaman tersimpan)'; startBtn.disabled=false; stopBtn.disabled=true;
+          recorder._result = { dataUrl: fr.result, mime, duration: Math.round((Date.now()-started)/1000) };
+        };
+        fr.readAsDataURL(blob);
+      };
+      rec.start();
+      statusEl.textContent='merekam…'; startBtn.disabled=true; stopBtn.disabled=false;
+    }
+    function stop(){ if(rec && rec.state!=='inactive') rec.stop(); }
+    const recorder = { start, stop, _result:null, getResult(){ return recorder._result; } };
+    stopBtn.addEventListener('click', stop);
+    setTimeout(()=> stop(), 120000);
+    return recorder;
+  }
+
+  // CRUD
+  async function upsertPost(p){ if(online){ await db.collection('posts').doc(p.id).set(p); } else saveLocal(posts); }
+  async function removePost(id){ posts = posts.filter(x=>x.id!==id); if(online){ await db.collection('posts').doc(id).delete(); } else saveLocal(posts); render(); }
+  async function updateLike(id){ const p = posts.find(x=>x.id===id); if(!p) return; p.likes=(p.likes||0)+1; await upsertPost(p); render(); }
+  async function addComment(postId, c){ const p = posts.find(x=>x.id===postId); if(!p) return; p.comments=p.comments||[]; p.comments.push(c); await upsertPost(p); render(); }
+
+  // Load realtime / local
+  if(online){
+    db.collection('posts').orderBy('createdAt','desc').onSnapshot((snap)=>{ posts = snap.docs.map(d=>d.data()); render(); });
+  } else { render(); }
+
+  // Render list
+  const cards=$('#cards');
+  function render(){
+    cards.innerHTML='';
+    if(!posts.length){ const d=document.createElement('div'); d.className='card empty'; d.textContent='Belum ada keluhan. Klik "Tambah Keluhan".'; cards.appendChild(d); return; }
+    posts.slice().reverse().forEach(p=>cards.appendChild(cardEl(p)));
+  }
+  function cardEl(p){
+    const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`
+      <div class="meta">
+        <span class="who">Dari: ${esc(p.from||'Anonim')}</span>
+        <span>📅 ${fmtTime(p.createdAt)}</span>
+      </div>
+      <div class="to">Untuk: ${esc(p.to)}</div>
+      <div class="content">${esc(p.text||'')}</div>
+      ${p.audio?.dataUrl?`<audio controls class="audio" src="${p.audio.dataUrl}"></audio>`:''}
+      <div class="kbar">
+        <button class="kbtn" data-like="${p.id}">🤍 <span class="count">${p.likes||0}</span></button>
+        <button class="kbtn" data-open="${p.id}">💬 <span class="count">${(p.comments||[]).length}</span></button>
+        <button class="kbtn" data-del="${p.id}">🗑️</button>
+      </div>`;
+    el.querySelector('[data-like]').onclick=()=>updateLike(p.id);
+    el.querySelector('[data-open]').onclick=()=>openDetail(p.id);
+    el.querySelector('[data-del]').onclick=()=>{ if(confirm('Hapus keluhan ini?')) removePost(p.id); };
+    return el;
+  }
+
+  // Form posting
+  const formDlg=$('#formDlg'); const detailDlg=$('#detailDlg'); const aboutDlg=$('#aboutDlg');
+  $('#aboutBtn').onclick=()=>aboutDlg.showModal();
+  $('#addBtn').onclick=()=>{ resetForm(); formDlg.showModal(); };
+  let latestAudio=null;
+  const formRecorder = createRecorder($('#recState'), $('#recPlay'), $('#recBtn'), $('#stopRecBtn'));
+  $('#recBtn').onclick=async()=>{ await formRecorder.start(); };
+  $('#stopRecBtn').onclick=()=>{}; // handled inside
+  function resetForm(){ $('#to').value=''; $('#from').value=''; $('#text').value=''; $('#recPlay').style.display='none'; $('#recPlay').src=''; $('#recState').textContent='siap'; latestAudio=null; $('#stopRecBtn').disabled=true; $('#recBtn').disabled=false; }
+  $('#resetFormBtn').onclick=()=> resetForm();
+  $('#closeFormBtn').onclick=()=> formDlg.close();
+  $('#saveBtn').onclick=async()=>{
+    latestAudio = formRecorder.getResult();
+    const to=$('#to').value.trim(); const from=$('#from').value.trim(); const text=$('#text').value.trim();
+    if(!to && !text && !latestAudio){ alert('Isi setidaknya tujuan, teks, atau rekaman.'); return; }
+    const post = { id: uid(), to, from, text, createdAt: Date.now(), likes:0, comments:[], audio: latestAudio||null };
+    posts.push(post); await upsertPost(post); formDlg.close(); render();
+  };
+
+  // Detail & komentar
+  function openDetail(id){
+    const p = posts.find(x=>x.id===id); if(!p) return;
+    const body=$('#detailBody');
+    body.innerHTML=`
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="to" style="margin:0">Untuk: ${esc(p.to)}</div>
+        <span class="muted">📅 ${fmtTime(p.createdAt)}</span>
+      </div>
+      <div class="muted" style="margin-bottom:6px">Dari: ${esc(p.from||'Anonim')}</div>
+      <div class="content">${esc(p.text||'')}</div>
+      ${p.audio?.dataUrl?`<audio class="audio" controls src="${p.audio.dataUrl}"></audio>`:''}
+      <div class="sep"></div>
+      <div class="muted" style="margin-bottom:6px">Komentar</div>
+      <div id="comments"></div>
+      <div class="sep"></div>
+      <div class="row" style="justify-content:flex-end;gap:8px">
+        <button class="kbtn" id="likeInDetail">🤍 <span>${p.likes||0}</span></button>
+        <button class="kbtn" id="delInDetail">🗑️ Hapus</button>
+      </div>`;
+    const list=$('#comments'); list.innerHTML=''; (p.comments||[]).forEach(c=>list.appendChild(commentEl(c)));
+    $('#likeInDetail').onclick=async()=>{ await updateLike(p.id); openDetail(id); };
+    $('#delInDetail').onclick=async()=>{ if(confirm('Hapus keluhan ini?')){ await removePost(p.id); detailDlg.close(); } };
+
+    let cAudio=null;
+    const cRec = createRecorder($('#cRecState'), $('#cRecPlay'), $('#cRecBtn'), $('#cStopRecBtn'));
+    $('#cRecBtn').onclick=async()=>{ await cRec.start(); };
+    $('#sendComment').onclick=async()=>{
+      cAudio = cRec.getResult();
+      const cf=$('#cFrom').value.trim(); const ct=$('#cText').value.trim();
+      if(!ct && !cAudio){ alert('Tulis komentar atau rekam VN.'); return; }
+      const c={ id: uid(), from: cf, text: ct, createdAt: Date.now(), audio: cAudio||null };
+      await addComment(p.id, c);
+      $('#cText').value=''; $('#cFrom').value=''; $('#cRecPlay').style.display='none'; $('#cRecPlay').src=''; $('#cRecState').textContent='siap'; $('#cStopRecBtn').disabled=true; $('#cRecBtn').disabled=false;
+      list.appendChild(commentEl(c));
+    };
+    $('#closeDetailBtn').onclick=()=> detailDlg.close();
+    detailDlg.showModal();
+  }
+  function commentEl(c){
+    const d=document.createElement('div'); d.className='comment';
+    d.innerHTML=`
+      <div class="row" style="justify-content:space-between">
+        <div><b>${esc(c.from||'Anonim')}</b></div>
+        <div class="muted">${fmtTime(c.createdAt)}</div>
+      </div>
+      ${c.text?`<div style="margin:6px 0 8px">${esc(c.text)}</div>`:''}
+      ${c.audio?.dataUrl?`<audio class="audio" controls src="${c.audio.dataUrl}"></audio>`:''}
+    `;
+    return d;
+  }
+
+  // first render local if offline
+  if(!online) render();
+})();
+</script>
+</body>
+</html>
